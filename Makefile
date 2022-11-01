@@ -36,18 +36,19 @@ endif
 CFLAGS			+= -DJLAB -DLINUX -DDAYTIME=$(COMPILE_TIME)
 
 INCS			= -I. -I$(HOME)/Linux-$(ARCH)/include \
+				-isystem${CODA_VME}/include \
 				-isystem${LINUXVME_INC} \
 				-isystem${CODA}/common/include
 LIBS			= -L. -L$(HOME)/Linux-$(ARCH)/lib \
 				-L${LINUXVME_LIB} \
 				-L${CODA}/${MACHINE}/lib \
-				-lrt -lpthread -ljvme $(ROLLIBS)
+				-lrt -lpthread $(ROLLIBS)
 
 # DEFs for compiling CODA readout lists
 CCRL			= ${CODA_BIN}/ccrl
 CODA_INCS		= -I.  -I${LINUXVME_INC} -I${CODA}/common/include
 CODA_LIBDIRS            = -L. -L${LINUXVME_LIB} -L${CODA}/${MACHINE}/lib
-CODA_LIBS		= -ljvme
+CODA_LIBS		=
 CODA_DEFS		= -DLINUX -DDAYTIME=$(COMPILE_TIME)
 CODA_CFLAGS		= -O -w -fpic -shared ${CODA_INCS} ${CODA_LIBDIRS} \
 			  ${CODA_LIBS} ${CODA_DEFS}

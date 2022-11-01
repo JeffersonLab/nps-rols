@@ -13,8 +13,9 @@
 #define POLLING_MODE
 
 #include <rol.h>
-#include "remexLib.h"
 #include "vtpLib.h"
+
+extern void daLogMsg(char *severity, char *fmt,...);
 
 int vtpUploadAll(char *string, int length);
 extern int vtpConfig(char *fname);

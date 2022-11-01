@@ -1,6 +1,6 @@
 /*************************************************************************
  *
- *  vtp_list.c -      Library of routines for readout of events using a
+ *  vtp_nps_list.c -  Library of routines for readout of events using a
  *                    JLAB Trigger Interface V3 (TI) with a VTP in
  *                    CODA 3.0.
  *
@@ -16,8 +16,9 @@
 
 #define USE_DMA
 #define READOUT_TI
-#undef READOUT_VTP
+#define READOUT_VTP
 
+#define VTP_BANK 0x56
 
 #define MAXBUFSIZE 100000
 unsigned int gDmaBufPhys_TI;
@@ -117,6 +118,10 @@ rocPause()
 void
 rocGo()
 {
+
+  /* Clear TI Link recieve FIFO */
+  vtpTiLinkResetFifo(1);
+
   if(vtpSerdesCheckLinks() == ERROR)
     {
       daLogMsg("ERROR","VTP Serdes links not up");
@@ -140,6 +145,7 @@ rocGo()
 
   vtpV7SetResetSoft(1);
   vtpV7SetResetSoft(0);
+
   vtpEbResetFifo();
 
 /* Do DMA readout before Go enabled to clear out any buffered data
@@ -228,48 +234,13 @@ rocTrigger(int EVTYPE)
 	printf("vtp[%2d] = 0x%08x\n", (int)ii, pBuf[ii]);
     }
 
-  CBOPEN(0x56, BT_UI4, blklevel);
+  CBOPEN(VTP_BANK, BT_UI4, blklevel);
   for(ii = 0; ii < len; ii++)
     {
       *rol->dabufp++ = pBuf[ii];
     }
   CBCLOSE;
 #endif
-
-/* Dummy Bank of data */
-  CBOPEN(0x11, BT_UI4, blklevel);
-  for(ii = 0; ii < 10; ii++)
-    {
-      *rol->dabufp++ = ii;
-    }
-  CBCLOSE;
-
-
-	if(firstEvent)
-	{
-		char str[10000];
-		int len = vtpUploadAll(str, sizeof(str)-4);
-	    str[len] = 0;
-	    str[len+1] = 0;
-	    str[len+2] = 0;
-	    str[len+3] = 0;
-		firstEvent = 0;
-		printf("VTP string(len = %d bytes): \n%s\n",len,str);
-  		CBOPEN(0x12, BT_UC1, blklevel);
-//  		CBOPEN(0x12, BT_UI4, blklevel);
-		for(ii = 0; ii < (len+3)/4; ii++)
-		{
-		  unsigned int val;
-		  val = ((str[ii*4+0])<<0) |
-				((str[ii*4+1])<<8) |
-				((str[ii*4+2])<<16) |
-				((str[ii*4+3])<<24);
-		 *rol->dabufp++ = val;
-		}
-		CBCLOSE;
-	}
-
-
 
 
   /* Close event */
