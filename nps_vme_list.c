@@ -1,14 +1,14 @@
 /*************************************************************************
  *
- *  bbshower_list.c - Library of routines for config and readout of
- *                    fadc250s and f1tdc-v1, using a JLab pipeline TI
- *                    as a source for trigger and syncreset.
+ *  nps_vme_list.c - Library of routines for config and readout of
+ *                    fadc250s using a JLab pipeline TI as a source
+ *                    for trigger and syncreset.
  *
  */
 
 /* Event Buffer definitions */
 #define MAX_EVENT_POOL     10
-#define MAX_EVENT_LENGTH   1024*240      /* Size in Bytes */
+#define MAX_EVENT_LENGTH   10*1024*240      /* Size in Bytes */
 
 #ifdef TI_MASTER
 /* EXTernal trigger source (e.g. front panel ECL input), POLL for available data */
@@ -19,7 +19,7 @@
 #endif
 #define TI_ADDR    (21<<19)          /* GEO slot 21 */
 
-#define FIBER_LATENCY_OFFSET 0x50  /* measured longest fiber length */
+#define FIBER_LATENCY_OFFSET 0x10  /* measured longest fiber length */
 
 #include <unistd.h>
 #include "dmaBankTools.h"
@@ -27,16 +27,14 @@
 #include "sdLib.h"
 #include "fadcLib.h"        /* library of FADC250 routines */
 #include "fadc250Config.h"
-#ifdef ENABLE_F1
-#include "f1tdcLib.h"       /* library of f1tdc routines */
-#endif
 
 /* Library to pipe stdout to daLogMsg */
 #include "dalmaRolLib.h"
 
 /* Routines to add string buffers to banks */
-#include "/adaqfs/home/sbs-onl/rol_common/rocUtils.c"
+#include "rocUtils.c"
 
+#define BLOCKLEVEL  1 
 #define BUFFERLEVEL 1
 
 /* FADC Library Variables */
@@ -53,14 +51,6 @@ extern int fadcA32Base, nfadc;
     if(rol->usrConfig)				\
       fadc250Config(rol->usrConfig);		\
   }
-
-#ifdef ENABLE_F1
-/* F1TDC Specifics */
-extern int f1tdcA32Base;
-extern int nf1tdc;
-#define F1_ADDR  (0x100000)
-#define F1TDC_BANK 0x4
-#endif
 
 /* for the calculation of maximum data words in the block transfer */
 unsigned int MAXFADCWORDS=0;
@@ -98,6 +88,9 @@ rocDownload()
 {
   unsigned short iflag;
   int ifa, stat;
+
+ /* define Block level */
+ blockLevel = BLOCKLEVEL;
 
 #ifdef TI_MASTER
   /*****************
@@ -167,25 +160,6 @@ rocDownload()
   faInit(FADC_ADDR, FADC_INCR, NFADC, FA_INIT_SKIP);
 
   faGStatus(0);
-#ifdef ENABLE_F1
-  /* Setup the F1TDC */
-  f1tdcA32Base = 0x08800000;
-
-  /*
-    Configure first with local clock, normal res, trigger matching
-    Configure with system clock in PRESTART
-  */
-  iflag = 2;
-
-  f1Init(F1_ADDR, 1<<19, 1, iflag);
-
-  if(nf1tdc > 1) {
-    f1EnableMultiBlock();
-  } else {
-    f1GEnableBusError();
-  }
-#endif
-
 #ifdef FADC_SCALERS
   if(fadcscaler_init_crl()) {
     printf("Scalers initialized\n");
@@ -197,12 +171,10 @@ rocDownload()
 
   tiStatus(0);
   sdStatus(0);
-#ifdef ENABLE_F1
-  f1GStatus(0);
-#endif
   faGStatus(0);
 
-  printf("rocDownload: User Download Executed\n");
+  printf("block level = %d  \n", blockLevel);
+  printf("rocDownload: (a) User Download Executed\n");
 
 }
 
@@ -257,34 +229,6 @@ rocPrestart()
   sdSetActiveVmeSlots(faScanMask()); /* Tell the sd where to find the fadcs */
 
 
-#ifdef ENABLE_F1
-  /* Use 31.25MHz clock from TI */
-  f1SetClockPeriod(32);
-
-  for(if1 = 0; if1 < nf1tdc; if1++)
-    {
-      f1SetInputPort(f1Slot(if1), 0); /* Front panel clock */
-      f1DisableClk(f1Slot(if1), 0);   /* Disable internal 40MHz clock */
-
-      f1EnableClk(f1Slot(if1), 1);    /* Use external clock */
-    }
-
-  f1ConfigReadFile("/home/sbs-onl/cfg/intelbbshower_f1tdc_3125.cfg");
-  for(if1 = 0; if1 < nf1tdc; if1++)
-    {
-      f1SetConfig(f1Slot(if1), 4, 0); /* Configure f1chips with file */
-    }
-
-  usleep(50000);
-  for(if1 = 0; if1 < nf1tdc; if1++)
-    {
-      f1EnableData(f1Slot(if1),0xff);
-    }
-  f1GClear();
-  f1GStatus(0);
-#endif
-
-
   for(ifa=0; ifa < nfadc; ifa++)
     {
       faSoftReset(faSlot(ifa),0);
@@ -302,9 +246,6 @@ rocPrestart()
 
   DALMAGO;
   sdStatus(0);
-#ifdef ENABLE_F1
-  f1GStatus(0);
-#endif
   tiStatus(0);
   faGStatus(0);
   DALMASTOP;
@@ -384,11 +325,6 @@ rocGo()
   /*  Enable FADC */
   faGEnable(0, 0);
 
-#ifdef ENABLE_F1
-#ifdef F1_SOFTTRIG
-  f1GEnableSoftTrig();
-#endif
-#endif
 
 #ifdef TI_MASTER
   if(rocTriggerSource != 0)
@@ -447,25 +383,8 @@ rocEnd()
   /* FADC Disable */
   faGDisable(0);
 
-#ifdef ENABLE_F1
-  /* F1TDC Event status - Is all data read out */
-  int islot = 0;
-#ifdef F1_SOFTTRIG
-  for(islot = 0; islot < nf1tdc; islot++)
-    f1DisableSoftTrig(f1Slot(islot));
-#endif
-
-  for(islot = 0; islot < nf1tdc; islot++) {
-    f1DisableData(f1Slot(islot));
-    /* f1Reset(f1Slot(islot),0); */
-  }
-#endif
-
   DALMAGO;
   sdStatus(0);
-#ifdef ENABLE_F1
-  f1GStatus(0);
-#endif
   tiStatus(0);
   faGStatus(0);
   DALMASTOP;
@@ -554,67 +473,6 @@ rocTrigger(int arg)
 
   int roflag = 1;
 
-#ifdef ENABLE_F1
-  if(nf1tdc <= 1) {
-    roflag = 1; /* DMA Transfer */
-  } else {
-    roflag = 2; /* Multiple DMA Transfer */
-  }
-
-  int f1maxdata = 100*nf1tdc*64;
-  /* Set DMA for A32 - BLT64 */
-  vmeDmaConfig(2,3,0);
-  BANKOPEN(F1TDC_BANK,BT_UI4,0);
-
-#ifdef F1_SOFTTRIG
-  f1Trig(f1Slot(0));
-#endif
-
-  for(ii=0;ii<100;ii++)
-    {
-      datascan = f1Dready(f1Slot(0));
-      if (datascan>0)
-	{
-	  break;
-	}
-    }
-
-  if(datascan>0)
-    {
-      for(islot = 0; islot < nf1tdc; islot++) {
-       nwords = f1ReadEvent(f1Slot(islot),dma_dabufp,f1maxdata,roflag);
-
-      if(nwords < 0)
-	{
-	  daLogMsg("ERROR","f1ReadEvent error.  f1Slot = %d  event = %d , status = 0x%x\n",
-		   f1Slot(islot), tiGetIntCount(),nwords);
-	  *dma_dabufp++ = LSWAP(0xda000bad);
-	  f1GClear();
-	}
-      else if (nwords >= f1maxdata)
-	{
-	  dma_dabufp += nwords;
-	  *dma_dabufp++ = LSWAP(0xda000bad);
-	  daLogMsg("ERROR","MAX f1 data.  f1slot = %d  event = %d\n",
-		   f1Slot(islot), tiGetIntCount());
-	  f1GClear();
-	}
-      else
-	{
-	  dma_dabufp += nwords;
-	}
-      }
-    }
-  else
-    {
-      daLogMsg("ERROR","Data not ready in event %d, F1TDC slot %d\n",
-	       tiGetIntCount(), f1Slot(0));
-      *dma_dabufp++ = LSWAP(0xda000bad);
-    }
-  *dma_dabufp++ = LSWAP(0xda0000ff); /* Event EOB */
-  BANKCLOSE;
-#endif
-
   /* Check for SYNC Event */
   if(tiGetSyncEventFlag() == 1)
     {
@@ -649,41 +507,6 @@ rocTrigger(int arg)
 	    }
 	}
 
-#ifdef ENABLE_F1
-      for(islot = 0; islot < nf1tdc; islot++)
-	{
-	  davail = f1Dready(f1Slot(islot));
-	  if(davail > 0)
-	    {
-	      daLogMsg("ERROR","f1tdc Data available (%d) after readout in SYNC event (%d)\n",
-		     davail, tiGetIntCount());
-#ifdef F1DMAFLUSH
-	      iflush = 0;
-	      while(f1Dready(f1Slot(islot)) && (++iflush < maxflush))
-		{
-		  vmeDmaFlush(f1GetA32(f1Slot(islot)));
-		}
-#else
-	      f1Clear(f1Slot(islot));
-#endif
-	    }
-	}
-
-      /* Check for f1 errors */
-      stat = f1GErrorStatus(0);
-      if (stat)
-	{
-	  f1GClearStatus(0); /* Clear Latched Status again */
-	  stat = f1GErrorStatus(0);
-	  if(stat)
-	    {
-	      daLogMsg("ERROR",
-		       "F1 TDCs have active error condition.  stat = 0x%x  SYNC event (%d)\n",
-		       stat, tiGetIntCount());
-
-	    }
-	}
-#endif
 
     }
 #ifdef FADC_SCALERS
@@ -726,15 +549,6 @@ rocCleanup()
 
   printf("%s: Reset all FADCs\n",__FUNCTION__);
   faGReset(1);
-
-#ifdef ENABLE_F1
-  printf("%s: Reset all F1TDCs\n",__FUNCTION__);
-  int islot;
-  for(islot=0; islot<nf1tdc; islot++)
-    {
-      f1HardReset(f1Slot(islot)); /* Reset, and DO NOT restore A32 settings (1) */
-    }
-#endif
 
 #ifdef TI_MASTER
   tiResetSlaveConfig();
