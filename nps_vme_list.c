@@ -80,17 +80,15 @@ typedef struct
 
 enum sbsSlaves
   {
-   nnpsvme1 = 0,
-   nnpsvme2,
+   nnpsvme2 = 0,
    nnpsvme3,
    nSlaves
   };
 
 TI_SLAVE_MAP tiSlaveConfig[nSlaves] =
   {
-    { 0,  1,  "npsvme1"},
-    { 0,  2,  "npsvme2"},
-    { 0,  3,  "npsvme3"}
+    { 0,  1,  "npsvme2"},
+    { 0,  2,  "npsvme3"}
   };
 #endif
 
