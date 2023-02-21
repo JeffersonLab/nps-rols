@@ -34,7 +34,7 @@
 /* Routines to add string buffers to banks */
 #include "rocUtils.c"
 
-#define BLOCKLEVEL  1 
+#define BLOCKLEVEL  1
 #define BUFFERLEVEL 1
 
 /* FADC Library Variables */
@@ -67,6 +67,122 @@ struct timespec last_time;
 #include "../scaler_server/scale32LibNew.c"
 #include "../scaler_server/linuxScalerLib.c"
 #endif
+
+#include "usrstrutils.c"
+#ifdef TI_MASTER
+/* TI-Master Fiber-Slave configuration */
+typedef struct
+{
+  int enable;
+  int port;
+  char rocname[64];
+} TI_SLAVE_MAP;
+
+enum sbsSlaves
+  {
+   nnpsvme1 = 0,
+   nnpsvme2,
+   nnpsvme3,
+   nSlaves
+  };
+
+TI_SLAVE_MAP tiSlaveConfig[nSlaves] =
+  {
+    { 0,  1,  "npsvme1"},
+    { 0,  2,  "npsvme2"},
+    { 0,  3,  "npsvme3"}
+  };
+#endif
+
+/* TI VTP configuration */
+int enable_vtp = 0;
+
+/*
+  Read the user flags/configuration file.
+  10sept21 - BM
+    - Support for
+      all,
+      HCAL, LHRS, BIGBITE
+      ROCs listed in tdSlaveConfig
+*/
+void
+readUserFlags()
+{
+  int flag = 0, flagval = 0;
+
+  printf("%s: Reading user flags file.\n", __func__);
+  init_strings();
+
+#ifdef TI_MASTER
+  /* enable 'npsvme1', 'npsvme1=1'
+     disable 'npsvme1=0'
+     similar for the rest of the crates
+  */
+  int islave=0;
+  for(islave = 0; islave < nSlaves; islave++)
+    {
+      flagval = 0;
+      flag = getflag(tiSlaveConfig[islave].rocname);
+
+      if(flag)
+	{
+	  flagval = 1;
+
+	  if(flag > 1)
+	    flagval = getint(tiSlaveConfig[islave].rocname);
+
+	  tiSlaveConfig[islave].enable = flagval;
+	}
+
+    }
+
+
+  /* Print config */
+  printf("%s\n TI Slave Config from usrstringutils\n",
+	 __func__);
+  printf("  Enable      Port       Roc\n");
+  printf("|----------------------------------------|\n");
+
+  for(islave = 0; islave < nSlaves; islave++)
+    {
+      printf("       %d  ",
+	     tiSlaveConfig[islave].enable);
+
+      printf("       %d  ",
+	     tiSlaveConfig[islave].port);
+
+      printf(" %-20s",
+	     tiSlaveConfig[islave].rocname);
+
+      printf("\n");
+    }
+
+  printf("\n");
+
+#endif
+
+  /* VTP Flag */
+  flagval = 0;
+  flag = getflag("vtp");
+  if(flag)
+    {
+      flagval = 1;
+
+      if(flag > 1)
+	flagval = getint("vtp");
+
+      enable_vtp = flagval;
+    }
+
+  printf("%s\n TI VTP config from usrstrutils\n",
+	 __func__);
+
+  if(enable_vtp)
+    printf("\tENABLED\n");
+  else
+    printf("\tDISABLED\n");
+
+}
 
 /*
   Global to configure the trigger source
@@ -189,7 +305,17 @@ rocPrestart()
   clock_gettime(CLOCK_REALTIME, &last_time);
 #endif
 
+
+  /* Read User Flags with usrstringutils
+     What's set
+     - TI Slave Ports
+     - VTP
+   */
+  readUserFlags();
+
   /* Program/Init VME Modules Here */
+
+
   /*****************
    *   FADC SETUP
    *****************/
@@ -284,6 +410,24 @@ rocGo()
 	 blockLevel,
 	 tiGetBlockBufferLevel(),
 	 bufferLevel);
+
+#ifdef TI_MASTER
+  tiResetSlaveConfig();
+
+  /* Enable TI ports that have been flagged from usrstringutils */
+  int ii;
+  for(ii = 0; ii < nSlaves; ii++)
+    {
+      if(tiSlaveConfig[ii].enable)
+	{
+	  tiAddSlave(tiSlaveConfig[ii].port);
+	}
+    }
+#endif
+
+  /* Add VTP as a slave, if flagged from usrstringutils */
+  if(enable_vtp)
+    tiRocEnable(2);
 
 #ifdef TI_SLAVE
   /* In case of slave, set TI busy to be enabled for full buffer level */
@@ -590,6 +734,6 @@ rocSetTriggerSource(int source)
 
 /*
   Local Variables:
-  compile-command: "make -B bbshower_list.so bbshower_slave_list.so"
+  compile-command: "make -B nps_vme_master_list.so nps_vme_slave_list.so "
   End:
  */
