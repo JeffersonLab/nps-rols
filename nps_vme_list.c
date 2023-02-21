@@ -88,7 +88,7 @@ enum sbsSlaves
 TI_SLAVE_MAP tiSlaveConfig[nSlaves] =
   {
     { 0,  1,  "npsvme2"},
-    { 0,  2,  "npsvme3"}
+    { 0,  5,  "npsvme3"}
   };
 #endif
 
