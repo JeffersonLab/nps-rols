@@ -14,7 +14,7 @@ QUIET	?= 1
 ARCH=armv7l
 
 # Plug in your primary readout lists here..
-VMEROL		= vtp_nps_list.so
+VMEROL		= nps_vtp_list.so
 # Add shared library dependencies here.  (jvme already included)
 ROLLIBS		= -lvtp -li2c
 
