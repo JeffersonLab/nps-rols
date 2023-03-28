@@ -1,6 +1,6 @@
 /*************************************************************************
  *
- *  vtp_nps_list.c -  Library of routines for readout of events using a
+ *  nps_vtp_list.c -  Library of routines for readout of events using a
  *                    JLAB Trigger Interface V3 (TI) with a VTP in
  *                    CODA 3.0.
  *
@@ -13,6 +13,10 @@
 #define MAX_EVENT_POOL   100
 
 #include <VTP_source.h>
+#include <byteswap.h>
+/* Routines to add string buffers to banks */
+#include "rocUtils.c"
+
 
 #define USE_DMA
 #define READOUT_TI
@@ -27,7 +31,6 @@ unsigned int gDmaBufPhys_VTP;
 
 int blklevel = 1;
 int maxdummywords = 200;
-int vtpComptonEnableScalerReadout = 0;
 
 /* trigBankType:
    Type 0xff10 is RAW trigger No timestamps
@@ -42,6 +45,14 @@ int firstEvent;
 void
 rocDownload()
 {
+
+  if(vtpInit(VTP_INIT_CLK_VXS_250))
+    {
+      printf("vtpInit() **FAILED**. User should not continue.\n");
+      daLogMsg("ERROR", "Failed to initialize VTP");
+
+      return;
+    }
 
   if(vtpDmaMemOpen(2, MAXBUFSIZE * 4) == OK)
     {
@@ -96,7 +107,27 @@ rocPrestart()
       return;
     }
 
+  DALMAGO;
+  vtpDmaStatus(0);
+  vtpSDPrintScalers();
   vtpTiLinkStatus();
+  vtpSerdesStatusAll();
+  DALMASTOP;
+
+  /* Add configuration files to user event type 137 */
+  int maxsize = MAX_EVENT_LENGTH-128, inum = 0, nwords = 0;
+
+  if(rol->usrConfig)
+    {
+      UEOPEN(137, BT_BANK, 0);
+      nwords = rocFile2Bank(rol->usrConfig,
+			    (uint8_t *)rol->dabufp,
+			    ROCID, inum++, maxsize);
+      if(nwords > 0)
+	rol->dabufp += nwords;
+
+      UECLOSE;
+    }
 
   printf(" Done with User Prestart\n");
 
@@ -128,7 +159,7 @@ rocGo()
       return;
     }
 
- vtpSerdesStatusAll();
+  vtpSerdesStatusAll();
 
   /* If there's an error in the status, re-initialize */
   if(vtpTiLinkStatus() == ERROR)
@@ -158,8 +189,12 @@ rocGo()
 #endif
 
 
-
+  DALMAGO;
+  vtpDmaStatus(0);
   vtpSDPrintScalers();
+  vtpTiLinkStatus();
+  vtpSerdesStatusAll();
+  DALMASTOP;
 
   /* Enable to recieve Triggers */
   VTPflag = 1;
@@ -174,9 +209,14 @@ rocEnd()
 {
   VTPflag = 0;
   CDODISABLE(VTP, 1, 0);
+
+  DALMAGO;
   vtpDmaStatus(0);
   vtpSDPrintScalers();
   vtpTiLinkStatus();
+  vtpSerdesStatusAll();
+  DALMASTOP;
+
 }
 
 /**
@@ -237,7 +277,7 @@ rocTrigger(int EVTYPE)
   CBOPEN(VTP_BANK, BT_UI4, blklevel);
   for(ii = 0; ii < len; ii++)
     {
-      *rol->dabufp++ = pBuf[ii];
+      *rol->dabufp++ = bswap_32(pBuf[ii]);
     }
   CBCLOSE;
 #endif
@@ -269,8 +309,33 @@ rocReset()
   vtpClose(VTP_FPGA_OPEN|VTP_I2C_OPEN|VTP_SPI_OPEN);
 }
 
+void
+rocLoad()
+{
+  int stat;
+
+  /* Open VTP library */
+  stat = vtpOpen(VTP_FPGA_OPEN | VTP_I2C_OPEN | VTP_SPI_OPEN);
+  if(stat < 0)
+    {
+      printf(" Unable to Open VTP driver library.\n");
+    }
+
+  dalmaInit(1);
+
+}
+
+void
+rocCleanup()
+{
+  dalmaClose();
+
+  /* Close the VTP Library */
+  vtpClose(VTP_FPGA_OPEN|VTP_I2C_OPEN|VTP_SPI_OPEN);
+}
+
 /*
   Local Variables:
-  compile-command: "make -k vtp_nps_list.so"
+  compile-command: "make -k nps_vtp_list.so"
   End:
  */

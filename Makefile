@@ -16,7 +16,7 @@ ARCH=armv7l
 # Plug in your primary readout lists here..
 VMEROL		= nps_vtp_list.so
 # Add shared library dependencies here.  (jvme already included)
-ROLLIBS		= -lvtp -li2c
+ROLLIBS		= -lvtp -li2c -ldalmaRol
 
 COMPILE_TIME	= \""$(shell date)"\"
 
@@ -29,7 +29,7 @@ CC			= gcc
 AR                      = ar
 RANLIB                  = ranlib
 ifdef DEBUG
-CFLAGS			= -Wall -g
+CFLAGS			= -Wall -Wno-unused -g
 else
 CFLAGS			= -O3
 endif
@@ -50,7 +50,7 @@ CODA_INCS		= -I.  -I${LINUXVME_INC} -I${CODA}/common/include
 CODA_LIBDIRS            = -L. -L${LINUXVME_LIB} -L${CODA}/${MACHINE}/lib
 CODA_LIBS		=
 CODA_DEFS		= -DLINUX -DDAYTIME=$(COMPILE_TIME)
-CODA_CFLAGS		= -O -w -fpic -shared ${CODA_INCS} ${CODA_LIBDIRS} \
+CODA_CFLAGS		= -O -fpic -shared ${CODA_INCS} ${CODA_LIBDIRS} \
 			  ${CODA_LIBS} ${CODA_DEFS}
 ifdef DEBUG
 CODA_CFLAGS		+= -Wall -g
