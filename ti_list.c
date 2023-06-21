@@ -34,7 +34,6 @@
 #define TI_FLAG TI_INIT_SKIP_FIRMWARE_CHECK
 #endif
 
-
 /* Measured longest fiber length in system */
 //#define FIBER_LATENCY_OFFSET 0x4A
 #define FIBER_LATENCY_OFFSET 0x5A
@@ -44,10 +43,131 @@
 
 /* Define initial blocklevel and buffering level */
 #define BLOCKLEVEL 1
-#define BUFFERLEVEL 1
+#define BUFFERLEVEL 5
 
 /* Library to pipe stdout to daLogMsg */
 #include "dalmaRolLib.h"
+
+#include "usrstrutils.c"
+#ifdef TI_MASTER
+/* TI-Master Fiber-Slave configuration */
+typedef struct
+{
+  int enable;
+  int port;
+  char rocname[64];
+} TI_SLAVE_MAP;
+
+enum tiSlaves
+  {
+   slave1 = 0,
+   slave2,
+   slave3,
+   slave4,
+   slave5,
+   nSlaves
+  };
+
+
+TI_SLAVE_MAP tiSlaveConfig[nSlaves] =
+  {
+    { 0,  1,  "dontuse"}, // reserved for HMS TI connection
+    { 0,  2,  "npsvme2"},
+    { 0,  3,  "npsvme3"},
+    { 0,  4,  "npsvme4"},
+    { 0,  5,  "npsvme5"}
+  };
+#endif
+
+/* TI VTP configuration */
+int enable_vtp = 0;
+
+/*
+  Read the user flags/configuration file.
+  10sept21 - BM
+    - Support for
+      all,
+      HCAL, LHRS, BIGBITE
+      ROCs listed in tdSlaveConfig
+*/
+void
+readUserFlags()
+{
+  int flag = 0, flagval = 0;
+
+  printf("%s: Reading user flags file.\n", __func__);
+  init_strings();
+
+#ifdef TI_MASTER
+  /* enable 'npsvme1', 'npsvme1=1'
+     disable 'npsvme1=0'
+     similar for the rest of the crates
+  */
+  int islave=0;
+  for(islave = 0; islave < nSlaves; islave++)
+    {
+      flagval = 0;
+      flag = getflag(tiSlaveConfig[islave].rocname);
+
+      if(flag)
+	{
+	  flagval = 1;
+
+	  if(flag > 1)
+	    flagval = getint(tiSlaveConfig[islave].rocname);
+
+	  tiSlaveConfig[islave].enable = flagval;
+	}
+
+    }
+
+
+  /* Print config */
+  printf("%s\n TI Slave Config from usrstringutils\n",
+	 __func__);
+  printf("  Enable      Port       Roc\n");
+  printf("|----------------------------------------|\n");
+
+  for(islave = 0; islave < nSlaves; islave++)
+    {
+      printf("       %d  ",
+	     tiSlaveConfig[islave].enable);
+
+      printf("       %d  ",
+	     tiSlaveConfig[islave].port);
+
+      printf(" %-20s",
+	     tiSlaveConfig[islave].rocname);
+
+      printf("\n");
+    }
+
+  printf("\n");
+
+#endif
+
+  /* VTP Flag */
+  flagval = 0;
+  flag = getflag("vtp");
+  if(flag)
+    {
+      flagval = 1;
+
+      if(flag > 1)
+	flagval = getint("vtp");
+
+      enable_vtp = flagval;
+    }
+
+  printf("%s\n TI VTP config from usrstrutils\n",
+	 __func__);
+
+  if(enable_vtp)
+    printf("\tENABLED\n");
+  else
+    printf("\tDISABLED\n");
+
+}
 
 /*
   Global to configure the trigger source
@@ -127,14 +247,6 @@ rocDownload()
   /* Set prompt output width (127 + 2) * 4 = 516 ns */
   tiSetPromptTriggerWidth(127);
 
-  if(strcmp("vtp",rol->usrString) == 0)
-    {
-      printf("%s: usrString = %s: Adding VTP\n",
-	     __func__, rol->usrString);
-      /* Add VTP as a slave */
-      tiRocEnable(2);
-    }
-
   tiStatus(0);
 
   printf("rocDownload: User Download Executed\n");
@@ -147,6 +259,13 @@ rocDownload()
 void
 rocPrestart()
 {
+
+  /* Read User Flags with usrstringutils
+     What's set
+     - TI Slave Ports
+     - VTP
+   */
+  readUserFlags();
 
   DALMAGO;
   tiStatus(0);
@@ -177,27 +296,45 @@ rocGo()
 	 tiGetBlockBufferLevel(),
 	 bufferLevel);
 
-#ifdef TI_SLAVE
-  /* In case of slave, set TI busy to be enabled for full buffer level */
+#ifdef TI_MASTER
+  tiResetSlaveConfig();
 
-  /* Check first for valid blockLevel and bufferLevel */
-  if((bufferLevel > 10) || (blockLevel > 1))
+  /* Enable TI ports that have been flagged from usrstringutils */
+  int ii;
+  for(ii = 0; ii < nSlaves; ii++)
     {
-      daLogMsg("ERROR","Invalid blockLevel / bufferLevel received: %d / %d",
-	       blockLevel, bufferLevel);
-      tiUseBroadcastBufferLevel(0);
-      tiSetBlockBufferLevel(1);
-
-      /* Cannot help the TI blockLevel with the current library.
-	 modules can be spared, though
-      */
-      blockLevel = 1;
-    }
-  else
-    {
-      tiUseBroadcastBufferLevel(1);
+      if(tiSlaveConfig[ii].enable)
+	{
+	  tiAddSlave(tiSlaveConfig[ii].port);
+	}
     }
 #endif
+
+  /* Add VTP as a slave, if flagged from usrstringutils */
+  if(enable_vtp)
+    tiRocEnable(2);
+
+/* #ifdef TI_SLAVE */
+/*   /\* In case of slave, set TI busy to be enabled for full buffer level *\/ */
+
+/*   /\* Check first for valid blockLevel and bufferLevel *\/ */
+/*   if((bufferLevel > 10) || (blockLevel > 1)) */
+/*     { */
+/*       daLogMsg("ERROR","Invalid blockLevel / bufferLevel received: %d / %d", */
+/* 	       blockLevel, bufferLevel); */
+/*       tiUseBroadcastBufferLevel(0); */
+/*       tiSetBlockBufferLevel(1); */
+
+/*       /\* Cannot help the TI blockLevel with the current library. */
+/* 	 modules can be spared, though */
+/*       *\/ */
+/*       blockLevel = 1; */
+/*     } */
+/*   else */
+/*     { */
+/*       tiUseBroadcastBufferLevel(1); */
+/*     } */
+/* #endif */
 
 #ifdef TI_MASTER
   /* Enable/Set Block Level on modules, if needed, here */
@@ -210,7 +347,7 @@ rocGo()
       if(rocTriggerSource == 1)
 	{
 	  /* Enable Random at rate 500kHz/(2^7) = ~3.9kHz */
-	  	  tiSetRandomTrigger(1,0xd);
+	  tiSetRandomTrigger(1,0x4);
 	  //tiSetRandomTrigger(1,0x4);
 	}
 

@@ -8,12 +8,19 @@
 
 /* Event Buffer definitions */
 #define MAX_EVENT_POOL     10
-#define MAX_EVENT_LENGTH   10*1024*240      /* Size in Bytes */
+
+/* Size in Bytes Original size -  Use setrf.tcl if greater than 60kB  */
+//#define MAX_EVENT_LENGTH   10*1024*240
+#define MAX_EVENT_LENGTH   100*(16*120*2+10*4)      /* Size in Bytes - modified Alexandre Apr 30th 2023 for 16 FADC x 120 samples x 10 events*/
 
 #ifdef TI_MASTER
 /* EXTernal trigger source (e.g. front panel ECL input), POLL for available data */
 #define TI_READOUT TI_READOUT_EXT_POLL
 #else
+#ifdef TI_SLAVE5
+#define TI_SLAVE
+#define TI_FLAG TI_INIT_SLAVE_FIBER_5
+#endif
 /* TS trigger source (e.g. fiber), POLL for available data */
 #define TI_READOUT TI_READOUT_TS_POLL
 #endif
@@ -35,7 +42,7 @@
 #include "rocUtils.c"
 
 #define BLOCKLEVEL  1
-#define BUFFERLEVEL 1
+#define BUFFERLEVEL 5
 
 /* FADC Library Variables */
 extern int fadcA32Base, nfadc;
@@ -80,15 +87,21 @@ typedef struct
 
 enum sbsSlaves
   {
-   nnpsvme2 = 0,
-   nnpsvme3,
+   eslave1 = 0,
+   eslave2,
+   eslave3,
+   eslave4,
+   eslave5,
    nSlaves
   };
 
 TI_SLAVE_MAP tiSlaveConfig[nSlaves] =
   {
-    { 0,  1,  "npsvme2"},
-    { 0,  5,  "npsvme3"}
+    { 0,  1,  "dontuse"}, // reserved for HMS TI connection
+    { 0,  2,  "npsvme2"},
+    { 0,  3,  "npsvme3"},
+    { 0,  4,  "npsvme4"},
+    { 0,  5,  "npsvme5"}
   };
 #endif
 
@@ -229,7 +242,17 @@ rocDownload()
     }
 
   /* Enable set specific TS input bits (1-6) */
-  tiEnableTSInput( TI_TSINPUT_1 | TI_TSINPUT_2 );
+  //  tiEnableTSInput( TI_TSINPUT_1 | TI_TSINPUT_2 | TI_TSINPUT_3 | TI_TSINPUT_6 | TI_TSINPUT_4 | TI_TSINPUT_5);
+  tiEnableTSInput(
+//		TI_TSINPUT_1 |
+		TI_TSINPUT_2 |
+		TI_TSINPUT_3 |
+//		TI_TSINPUT_4 |
+		TI_TSINPUT_5 |
+//		TI_TSINPUT_6 |
+		0
+	);
+
 
   /* Load the trigger table that associates
    *    - TS#1,2,3,4,5,6 : Physics trigger,
@@ -249,7 +272,7 @@ rocDownload()
   tiSetBlockBufferLevel(BUFFERLEVEL);
 
   /* Sync event every 1000 blocks */
-  tiSetSyncEventInterval(1000);
+  //  tiSetSyncEventInterval(1000);
 
   /* Set L1A prescale ... rate/(x+1) */
   tiSetPrescale(0);
@@ -427,27 +450,27 @@ rocGo()
   if(enable_vtp)
     tiRocEnable(2);
 
-#ifdef TI_SLAVE
-  /* In case of slave, set TI busy to be enabled for full buffer level */
+/* #ifdef TI_SLAVE */
+/*   /\* In case of slave, set TI busy to be enabled for full buffer level *\/ */
 
-  /* Check first for valid blockLevel and bufferLevel */
-  if((bufferLevel > 10) || (blockLevel > 1))
-    {
-      daLogMsg("ERROR","Invalid blockLevel / bufferLevel received: %d / %d",
-	       blockLevel, bufferLevel);
-      tiUseBroadcastBufferLevel(0);
-      tiSetBlockBufferLevel(1);
+/*   /\* Check first for valid blockLevel and bufferLevel *\/ */
+/*   if((bufferLevel > 10) || (blockLevel > 1)) */
+/*     { */
+/*       daLogMsg("ERROR","Invalid blockLevel / bufferLevel received: %d / %d", */
+/* 	       blockLevel, bufferLevel); */
+/*       tiUseBroadcastBufferLevel(0); */
+/*       tiSetBlockBufferLevel(1); */
 
-      /* Cannot help the TI blockLevel with the current library.
-	 modules can be spared, though
-      */
-      blockLevel = 1;
-    }
-  else
-    {
-      tiUseBroadcastBufferLevel(1);
-    }
-#endif
+/*       /\* Cannot help the TI blockLevel with the current library. */
+/* 	 modules can be spared, though */
+/*       *\/ */
+/*       blockLevel = 1; */
+/*     } */
+/*   else */
+/*     { */
+/*       tiUseBroadcastBufferLevel(1); */
+/*     } */
+/* #endif */
 
   faGSetBlockLevel(blockLevel);
 
@@ -732,6 +755,6 @@ rocSetTriggerSource(int source)
 
 /*
   Local Variables:
-  compile-command: "make -B nps_vme_master_list.so nps_vme_slave_list.so "
+  compile-command: "make -B nps_vme_master_list.so nps_vme_slave_list.so nps_vme_slave5_list.so "
   End:
  */
