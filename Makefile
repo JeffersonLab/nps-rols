@@ -21,7 +21,7 @@ endif
 VMEROL			= event_list.so ti_master_list.so ti_slave_list.so
 VMEROL			+=  nps_vme_master_list.so  nps_vme_slave_list.so
 # Add shared library dependencies here.  (jvme, ti, are already included)
-ROLLIBS			= -ldalmaRol -lfadc -lsd -lts
+ROLLIBS			= -ldalmaRol -lfadc -lsd -lts -lvld
 
 ifdef CODA_VME
 INC_CODA_VME	= -isystem${CODA_VME}/include

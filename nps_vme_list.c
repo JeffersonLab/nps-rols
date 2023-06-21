@@ -75,6 +75,14 @@ struct timespec last_time;
 #include "../scaler_server/linuxScalerLib.c"
 #endif
 
+#ifdef VLD_READOUT
+// VLD headers for VLD readout through shared memory
+#include "vldLib.h"
+#include "vldShm.h"
+#define VLD_BANK 0x1ed
+#endif
+
+
 #include "usrstrutils.c"
 #ifdef TI_MASTER
 /* TI-Master Fiber-Slave configuration */
@@ -306,9 +314,16 @@ rocDownload()
   set_runstatus(0);
 #endif
 
+#ifdef VLD_READOUT
+  vldInit(0, 0, 0, 0); // Initialize library using auto-locate (all args = 0)
+#endif
+
   tiStatus(0);
   sdStatus(0);
   faGStatus(0);
+#ifdef VLD_READOUT
+  vldGStatus(1);
+#endif
 
   printf("block level = %d  \n", blockLevel);
   printf("rocDownload: (a) User Download Executed\n");
@@ -395,6 +410,9 @@ rocPrestart()
   sdStatus(0);
   tiStatus(0);
   faGStatus(0);
+#ifdef VLD_READOUT
+  vldGStatus(1);
+#endif
   DALMASTOP;
 
   /* Add configuration files to user event type 137 */
@@ -552,6 +570,9 @@ rocEnd()
   sdStatus(0);
   tiStatus(0);
   faGStatus(0);
+#ifdef VLD_READOUT
+  vldGStatus(1);
+#endif
   DALMASTOP;
 
 #ifdef FADC_SCALERS
@@ -595,7 +616,7 @@ rocTrigger(int arg)
     }
 
   /* fADC250 Readout */
-  BANKOPEN(FADC_BANK,BT_UI4,0);
+  BANKOPEN(FADC_BANK, BT_UI4, blockLevel);
 
   /* Mask of initialized modules */
   scanmask = faScanMask();
@@ -635,6 +656,23 @@ rocTrigger(int arg)
 	     roCount, datascan, scanmask);
     }
   BANKCLOSE;
+
+#ifdef VLD_READOUT
+  BANKOPEN(VLD_BANK, BT_UI4, 0);
+
+  nwords = vldShmReadBlock(dma_dabufp, 256);
+  if(nwords > 0)
+    {
+      dma_dabufp += nwords;
+    }
+  else
+    {
+      daLogMsg("ERROR","Event %d: Error in VLD readout\n", roCount);
+    }
+
+  BANKCLOSE;
+#endif
+
 
   int roflag = 1;
 
