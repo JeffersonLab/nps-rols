@@ -26,7 +26,16 @@
 #endif
 #define TI_ADDR    (21<<19)          /* GEO slot 21 */
 
-#define FIBER_LATENCY_OFFSET 0x10  /* measured longest fiber length */
+// Fiber Latency Offset depends on fiber used
+
+// TI-MASTER and TI_SLAVE5 used in NPS stand-alone
+#if defined(TI_MASTER) || defined(TI_SLAVE5)
+#define FIBER_LATENCY_OFFSET 0x10  /* longest from NPS-VME{2,3,4,5} to NPS-VME1 is 0xF */
+// #warning Using 0x10 for Fiber Latency Offset
+#else
+#define FIBER_LATENCY_OFFSET 0xC0  /* longest from NPS-VME{1,2,3,4,5} HMS ROC1 is 0xBD */
+// #warning Using 0xC0 for Fiber Latency Offset
+#endif
 
 #include <unistd.h>
 #include "dmaBankTools.h"
@@ -75,6 +84,7 @@ struct timespec last_time;
 #include "../scaler_server/linuxScalerLib.c"
 #endif
 
+#define VLD_READOUT
 #ifdef VLD_READOUT
 // VLD headers for VLD readout through shared memory
 #include "vldLib.h"
@@ -322,7 +332,8 @@ rocDownload()
   sdStatus(0);
   faGStatus(0);
 #ifdef VLD_READOUT
-  vldGStatus(1);
+  if(vldGetNVLD() > 0)
+    vldGStatus(1);
 #endif
 
   printf("block level = %d  \n", blockLevel);
@@ -399,6 +410,11 @@ rocPrestart()
       faEnableSyncReset(faSlot(ifa));
     }
 
+#ifdef VLD_READOUT
+  if(vldGetNVLD() > 0)
+    vldShmResetCounts(1, 1);
+#endif
+
 #ifdef TI_MASTER
   /* Set number of events per block (broadcasted to all connected TI Slaves)*/
   tiSetBlockLevel(blockLevel);
@@ -411,7 +427,8 @@ rocPrestart()
   tiStatus(0);
   faGStatus(0);
 #ifdef VLD_READOUT
-  vldGStatus(1);
+  if(vldGetNVLD() > 0)
+    vldGStatus(1);
 #endif
   DALMASTOP;
 
@@ -571,7 +588,8 @@ rocEnd()
   tiStatus(0);
   faGStatus(0);
 #ifdef VLD_READOUT
-  vldGStatus(1);
+  if(vldGetNVLD() > 0)
+    vldGStatus(1);
 #endif
   DALMASTOP;
 
@@ -658,19 +676,22 @@ rocTrigger(int arg)
   BANKCLOSE;
 
 #ifdef VLD_READOUT
-  BANKOPEN(VLD_BANK, BT_UI4, 0);
-
-  nwords = vldShmReadBlock(dma_dabufp, 256);
-  if(nwords > 0)
+  if(vldGetNVLD() > 0)
     {
-      dma_dabufp += nwords;
-    }
-  else
-    {
-      daLogMsg("ERROR","Event %d: Error in VLD readout\n", roCount);
-    }
+      BANKOPEN(VLD_BANK, BT_UI4, 0);
 
-  BANKCLOSE;
+      nwords = vldShmReadBlock(dma_dabufp, 256);
+      if(nwords > 0)
+	{
+	  dma_dabufp += nwords;
+	}
+      else
+	{
+	  daLogMsg("ERROR","Event %d: Error in VLD readout\n", roCount);
+	}
+
+      BANKCLOSE;
+    }
 #endif
 
 
