@@ -33,8 +33,8 @@
 #define FIBER_LATENCY_OFFSET 0x10  /* longest from NPS-VME{2,3,4,5} to NPS-VME1 is 0xF */
 // #warning Using 0x10 for Fiber Latency Offset
 #else
-#define FIBER_LATENCY_OFFSET 0xC0  /* longest from NPS-VME{1,2,3,4,5} HMS ROC1 is 0xBD */
-// #warning Using 0xC0 for Fiber Latency Offset
+#define FIBER_LATENCY_OFFSET 0xD0  /* longest from NPS-VME{1,2,3,4,5} HMS ROC1 is 0xBD */
+// #warning Using 0xD0 for Fiber Latency Offset
 #endif
 
 #include <unistd.h>
@@ -167,6 +167,7 @@ readUserFlags()
 
 
   /* Print config */
+
   printf("%s\n TI Slave Config from usrstringutils\n",
 	 __func__);
   printf("  Enable      Port       Roc\n");
@@ -237,6 +238,7 @@ rocDownload()
  /* define Block level */
  blockLevel = BLOCKLEVEL;
 
+
 #ifdef TI_MASTER
   /*****************
    *   TI SETUP
@@ -290,7 +292,7 @@ rocDownload()
   tiSetBlockBufferLevel(BUFFERLEVEL);
 
   /* Sync event every 1000 blocks */
-  //  tiSetSyncEventInterval(1000);
+  tiSetSyncEventInterval(1000);
 
   /* Set L1A prescale ... rate/(x+1) */
   tiSetPrescale(0);
@@ -337,6 +339,8 @@ rocDownload()
 #endif
 
   printf("block level = %d  \n", blockLevel);
+  printf("Fiber latency 0x%x\n",FIBER_LATENCY_OFFSET);
+
   printf("rocDownload: (a) User Download Executed\n");
 
 }
