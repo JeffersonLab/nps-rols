@@ -698,11 +698,8 @@ rocTrigger(int arg)
     }
 #endif
 
-
-  int roflag = 1;
-
   /* Check for SYNC Event */
-  if(tiGetSyncEventFlag() == 1)
+  if(tiGetBlockSyncFlag() == 1)
     {
       int iflush = 0, maxflush = 10;
       /* Check for data available */

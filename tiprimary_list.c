@@ -303,6 +303,17 @@ static void __end()
   if (__the_event__) WRITE_EVENT_;
 } /* end end block */
 
+#define CEOSYNC(bnum, btype, nev, bsync) {				\
+    NEWEVENT;								\
+    StartOfEvent[event_depth__++] = (unsigned int *)(rol->dabufp);		\
+    if(input_event__) {							\
+      *(++(rol->dabufp)) = ((bnum) << 16) | ((btype##_ty) << 8) | (0xff & (input_event__->nevent)); \
+    } else {								\
+      *(++(rol->dabufp)) = (bsync<<28) | ((bnum) << 16) | ((btype##_ty) << 8) | (nev); \
+    }									\
+    ((rol->dabufp))++;}
+
+
 void usrtrig(unsigned long EVTYPE,unsigned long EVSOURCE)
 {
   int ii, len;
@@ -310,15 +321,16 @@ void usrtrig(unsigned long EVTYPE,unsigned long EVSOURCE)
   DMANODE *outEvent;
   unsigned int blockstatus = 0;
   int bready = 0;
+  unsigned long bSyncFlag = 0;
 
   outEvent = dmaPGetItem(vmeOUT);
   if(outEvent != NULL)
     {
       len = outEvent->length;
       event_number = outEvent->nevent;
-      syncFlag = the_event->type;
+      bSyncFlag = outEvent->type;
 
-      CEOPEN(ROCID, BT_BANK, blockLevel);
+      CEOSYNC(ROCID, BT_BANK, blockLevel, bSyncFlag);
 
       if(rol->dabufp != NULL)
 	{
@@ -336,6 +348,7 @@ void usrtrig(unsigned long EVTYPE,unsigned long EVSOURCE)
 
       ACKLOCK;
 
+      outEvent->type = 0;
       dmaPFreeItem(outEvent);
 
       if(tiNeedAck>0)
@@ -387,6 +400,7 @@ void asyncTrigger()
     {
       printf("asyncTrigger: ERROR: Interrupt Count = %d the_event->length = %ld\t",intCount, the_event->length);
     }
+  the_event->type = 0;
 
   /* Execute user defined Trigger Routine */
   rocTrigger(intCount);
