@@ -25,10 +25,10 @@
 /* INIT_NAME, INIT_NAME_POLL must be defined at compilation.
    Check readout list Makefile */
 #ifndef INIT_NAME
-#warning "INIT_NAME undefined. Set to readout list filename base with gcc flag -DINIT_NAME"
+#error "INIT_NAME undefined. Set to readout list filename base with gcc flag -DINIT_NAME"
 #endif
 #ifndef INIT_NAME_POLL
-#warning "INIT_NAME_POLL undefined. Set to readout list filename base with gcc flag -DINIT_NAME_POLL"
+#error "INIT_NAME_POLL undefined. Set to readout list filename base with gcc flag -DINIT_NAME_POLL"
 #endif
 
 #include <stdio.h>
@@ -140,9 +140,10 @@ static void __download()
   vmeIN  = dmaPCreate("vmeIN",MAX_EVENT_LENGTH,MAX_EVENT_POOL,0);
   vmeOUT = dmaPCreate("vmeOUT",0,0,0);
 
-  if(vmeIN == 0)
+  if(vmeIN == 0) {
     daLogMsg("ERROR", "Unable to allocate memory for event buffers");
-
+    ROL_SET_ERROR;
+  }
   /* Reinitialize the Buffer memory */
   dmaPReInitAll();
   dmaPStatsAll();
@@ -165,7 +166,10 @@ static void __download()
 #endif
 
   status = tiInit(TI_ADDR,TI_READOUT,TI_FLAG);
-  if(status == -1) daLogMsg("ERROR","Unable to initialize TI board");
+  if(status == -1) {
+    daLogMsg("ERROR","Unable to initialize TI board");
+    ROL_SET_ERROR;
+  }
 
   /* Set timestamp format 48 bits */
   tiSetEventFormat(3);
@@ -184,6 +188,15 @@ static void __download()
       taskDelay(2);
     }
 
+#ifdef STREAMING_MODE
+  tiSetUserSyncResetReceive(1);
+  tiDisableVXSSignals();
+  if(tsCrate)
+    { /* Enable User SyncReset to hold the stream */
+      tiEnableVXSSignals();
+      tiUserSyncReset(1,1);
+    }
+#endif
 } /*end download */
 
 /**
@@ -203,6 +216,10 @@ static void __prestart()
   TIPRIMARY_INIT;
   CTRIGRSS(TIPRIMARY,1,usrtrig,usrtrig_done);
   CRTTYPE(1,TIPRIMARY,1);
+
+#ifdef STREAMING_MODE
+  tiEnableVXSSignals();
+#endif
 
   /* Check the health of the vmeBus Mutex.. re-init if necessary */
   vmeCheckMutexHealth(10);
@@ -270,6 +287,9 @@ static void __end()
   if(tsCrate)
     {
       tiDisableTriggerSource(1);
+#ifdef STREAMING_MODE
+      tiUserSyncReset(1,1);   /* Disable the Stream */
+#endif
     }
 
   blockstatus = tiBlockStatus(0,0);
@@ -303,34 +323,23 @@ static void __end()
   if (__the_event__) WRITE_EVENT_;
 } /* end end block */
 
-#define CEOSYNC(bnum, btype, nev, bsync) {				\
-    NEWEVENT;								\
-    StartOfEvent[event_depth__++] = (unsigned int *)(rol->dabufp);		\
-    if(input_event__) {							\
-      *(++(rol->dabufp)) = ((bnum) << 16) | ((btype##_ty) << 8) | (0xff & (input_event__->nevent)); \
-    } else {								\
-      *(++(rol->dabufp)) = (bsync<<28) | ((bnum) << 16) | ((btype##_ty) << 8) | (nev); \
-    }									\
-    ((rol->dabufp))++;}
-
-
 void usrtrig(unsigned long EVTYPE,unsigned long EVSOURCE)
 {
   int ii, len;
+  int syncFlag = 0;
   unsigned int event_number=0;
   DMANODE *outEvent;
   unsigned int blockstatus = 0;
   int bready = 0;
-  unsigned long bSyncFlag = 0;
 
   outEvent = dmaPGetItem(vmeOUT);
   if(outEvent != NULL)
     {
       len = outEvent->length;
+      syncFlag = outEvent->type;
       event_number = outEvent->nevent;
-      bSyncFlag = outEvent->type;
 
-      CEOSYNC(ROCID, BT_BANK, blockLevel, bSyncFlag);
+      CEOPEN(ROCID, BT_BANK, blockLevel);
 
       if(rol->dabufp != NULL)
 	{
