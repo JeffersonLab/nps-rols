@@ -247,6 +247,51 @@ static void __prestart()
   rol->recNb = 0;
 } /*end prestart */
 
+static void __end()
+{
+  unsigned int blockstatus=0;
+
+  /* Stop triggers on the TI-master */
+  if(tsCrate)
+    {
+      tiDisableTriggerSource(1);
+#ifdef STREAMING_MODE
+      tiUserSyncReset(1,1);   /* Disable the Stream */
+#endif
+    }
+
+  blockstatus = tiBlockStatus(0,0);
+  printf("__end: blockstatus=%d\n",blockstatus);
+
+  ACKLOCK;
+  ack_runend=1;
+  if(blockstatus)
+    {
+      printf("%s: Clearing data from TI (blockstatus = 0x%x)\n",__FUNCTION__, blockstatus);
+      ENDRUN_TIMEDWAIT(30);
+      printf("%s: endrun_timedwait_ret = %d   blockstatus = 0x%x\n",
+	     __FUNCTION__,endrun_timedwait_ret,tiBlockStatus(0,0));
+    }
+  ACKUNLOCK;
+
+  INTLOCK;
+  INTUNLOCK;
+
+  tiIntDisable();
+  tiIntDisconnect();
+
+  /* Execute User defined end */
+  rocEnd();
+
+  CDODISABLE(TIPRIMARY,1,0);
+
+  dmaPStatsAll();
+
+  daLogMsg("INFO","End Executed");
+
+  if (__the_event__) WRITE_EVENT_;
+} /* end end block */
+
 /**
  *  PAUSE
  */
@@ -278,50 +323,6 @@ static void __go()
 
   if (__the_event__) WRITE_EVENT_;
 }
-
-static void __end()
-{
-  unsigned int blockstatus=0;
-
-  /* Stop triggers on the TI-master */
-  if(tsCrate)
-    {
-      tiDisableTriggerSource(1);
-#ifdef STREAMING_MODE
-      tiUserSyncReset(1,1);   /* Disable the Stream */
-#endif
-    }
-
-  blockstatus = tiBlockStatus(0,0);
-
-  ACKLOCK;
-  ack_runend=1;
-  if(blockstatus)
-    {
-      printf("%s: Clearing data from TI (blockstatus = 0x%x)\n",__FUNCTION__, blockstatus);
-      ENDRUN_TIMEDWAIT(30);
-      printf("%s: endrun_timedwait_ret = %d   blockstatus = 0x%x\n",
-	     __FUNCTION__,endrun_timedwait_ret,tiBlockStatus(0,0));
-    }
-  ACKUNLOCK;
-
-  INTLOCK;
-  INTUNLOCK;
-
-  tiIntDisable();
-  tiIntDisconnect();
-
-  /* Execute User defined end */
-  rocEnd();
-
-  CDODISABLE(TIPRIMARY,1,0);
-
-  dmaPStatsAll();
-
-  daLogMsg("INFO","End Executed");
-
-  if (__the_event__) WRITE_EVENT_;
-} /* end end block */
 
 void usrtrig(unsigned long EVTYPE,unsigned long EVSOURCE)
 {
@@ -368,13 +369,7 @@ void usrtrig(unsigned long EVTYPE,unsigned long EVSOURCE)
 
       if(ack_runend)
 	{
-	  /* Check for available blocks in the TI */
-	  blockstatus = tiBlockStatus(0,0);
-	  bready = tiBReady();
-	  printf("tiBlockStatus = 0x%x   tiBReady() = %d\n",
-		 blockstatus,bready);
-
-	  if((blockstatus == 0) && (bready == 0))
+	  if(tiBlockStatus(0,0)==0)
 	    ENDRUN_SIGNAL;
 	}
 
