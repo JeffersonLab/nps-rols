@@ -212,7 +212,6 @@ static void __prestart()
 
   daLogMsg("INFO","Entering Prestart");
 
-
   TIPRIMARY_INIT;
   CTRIGRSS(TIPRIMARY,1,usrtrig,usrtrig_done);
   CRTTYPE(1,TIPRIMARY,1);
@@ -223,6 +222,13 @@ static void __prestart()
 
   /* Check the health of the vmeBus Mutex.. re-init if necessary */
   vmeCheckMutexHealth(10);
+
+  /* Clean up events in event buffers */
+  if(getOutQueueCount() != 0)
+    {
+      daLogMsg("INFO","Cleaning up %d buffers from vmeOUT", getOutQueueCount());
+      dmaPReInitAll();
+    }
 
   /* Execute User defined prestart */
   rocPrestart();
@@ -268,7 +274,7 @@ static void __end()
   if(blockstatus)
     {
       printf("%s: Clearing data from TI (blockstatus = 0x%x)\n",__FUNCTION__, blockstatus);
-      ENDRUN_TIMEDWAIT(30);
+      ENDRUN_TIMEDWAIT(5);
       printf("%s: endrun_timedwait_ret = %d   blockstatus = 0x%x\n",
 	     __FUNCTION__,endrun_timedwait_ret,tiBlockStatus(0,0));
     }
