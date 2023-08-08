@@ -274,7 +274,7 @@ static void __end()
   if(blockstatus)
     {
       printf("%s: Clearing data from TI (blockstatus = 0x%x)\n",__FUNCTION__, blockstatus);
-      ENDRUN_TIMEDWAIT(5);
+      ENDRUN_TIMEDWAIT(30);
       printf("%s: endrun_timedwait_ret = %d   blockstatus = 0x%x\n",
 	     __FUNCTION__,endrun_timedwait_ret,tiBlockStatus(0,0));
     }
