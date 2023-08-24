@@ -261,18 +261,15 @@ rocDownload()
       tiSetTriggerSource(TI_TRIGGER_PULSER); /* Internal Pulser */
     }
 
-  /* Enable set specific TS input bits (1-6) */
-  //  tiEnableTSInput( TI_TSINPUT_1 | TI_TSINPUT_2 | TI_TSINPUT_3 | TI_TSINPUT_6 | TI_TSINPUT_4 | TI_TSINPUT_5);
+  /* Enable specific TS input bits (1-6) */
   tiEnableTSInput(
-//		TI_TSINPUT_1 |
-		TI_TSINPUT_2 |
-		TI_TSINPUT_3 |
-//		TI_TSINPUT_4 |
-		TI_TSINPUT_5 |
-//		TI_TSINPUT_6 |
-		0
-	);
-
+		  /* TI_TSINPUT_1 | */
+		  TI_TSINPUT_2 |
+		  TI_TSINPUT_3 |
+		  /* TI_TSINPUT_4 | */
+		  TI_TSINPUT_5 |
+		  /* TI_TSINPUT_6  */
+		);
 
   /* Load the trigger table that associates
    *    - TS#1,2,3,4,5,6 : Physics trigger,
