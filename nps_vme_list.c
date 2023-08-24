@@ -267,7 +267,7 @@ rocDownload()
 		  TI_TSINPUT_2 |
 		  TI_TSINPUT_3 |
 		  /* TI_TSINPUT_4 | */
-		  TI_TSINPUT_5 |
+		  TI_TSINPUT_5 | 0
 		  /* TI_TSINPUT_6  */
 		);
 
@@ -300,6 +300,29 @@ rocDownload()
   /* Add trigger latch pattern to datastream */
   tiSetFPInputReadout(1);
 #endif
+
+  int fiber_latency_offset[16] =
+    { 0,0,0,0, 0,0,0,0, 0,0,// ROC ID = 0 - 9
+#if defined(TI_MASTER) || defined(TI_SLAVE5)
+      /* Fiber offsets for NPS only configs */
+      0x10, // 10: nps-vme1
+      0x0F, // 11: nps-vme2
+      0x0F, // 12: nps-vme3
+      0x0D, // 13: nps-vme4
+      0x0D, // 14: nps-vme5
+#else
+      /* Fiber offsets for NPS+HMS configs */
+      0xD0, // 10: nps-vme1
+      0xD1, // 11: nps-vme2
+      0xD0, // 12: nps-vme3
+      0xCD, // 13: nps-vme4
+      0xCE, // 14: nps-vme5
+#endif
+      0, };  // 15
+  int measured_fiber_latency = tiGetFiberLatencyMeasurement();
+
+  /* Re-set the fiber delay */
+  tiSetFiberDelay(measured_fiber_latency, fiber_latency_offset[ROCID]);
 
   /* Init the SD library so we can get status info */
   sdScanMask = 0;
