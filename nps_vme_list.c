@@ -300,16 +300,16 @@ rocDownload()
   /* Add trigger latch pattern to datastream */
   tiSetFPInputReadout(1);
 #endif
-
+  int offset_fudge = 3;
   int fiber_latency_offset[16] =
     { 0,0,0,0, 0,0,0,0, 0,0,// ROC ID = 0 - 9
 #if defined(TI_MASTER) || defined(TI_SLAVE5)
       /* Fiber offsets for NPS only configs */
-      0x10, // 10: nps-vme1
-      0x0F, // 11: nps-vme2
-      0x0F, // 12: nps-vme3
-      0x0D, // 13: nps-vme4
-      0x0D, // 14: nps-vme5
+      0x10 + offset_fudge, // 10: nps-vme1
+      0x0F + offset_fudge, // 11: nps-vme2
+      0x0F + offset_fudge, // 12: nps-vme3
+      0x0D + offset_fudge, // 13: nps-vme4
+      0x0D + offset_fudge, // 14: nps-vme5
 #else
       /* Fiber offsets for NPS+HMS configs */
       0xD0, // 10: nps-vme1
