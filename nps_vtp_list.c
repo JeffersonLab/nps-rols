@@ -188,6 +188,10 @@ rocGo()
     //    vtpEbTiReadEvent(gpDmaBuf, MAXBUFSIZE);
 #endif
 
+#ifdef READOUT_VTP
+  vtpDmaStart(VTP_DMA_VTP, vtpDmaMemGetPhysAddress(1), MAXBUFSIZE*4);
+  vtpDmaWaitDone(VTP_DMA_VTP);
+#endif
 
   DALMAGO;
   vtpDmaStatus(0);
@@ -230,9 +234,6 @@ rocTrigger(int EVTYPE)
   volatile unsigned int *pBuf;
 
 
-  /* Open an event, containing Banks */
-  CEOPEN(ROCID, BT_BANK, blklevel);
-
 #ifdef READOUT_TI
   vtpDmaStart(VTP_DMA_TI, vtpDmaMemGetPhysAddress(0), MAXBUFSIZE * 4);
 #endif
@@ -255,10 +256,19 @@ rocTrigger(int EVTYPE)
 
   len = vtpTIData2TriggerBank(pBuf, len);
 
-  for(ii = 0; ii < len; ii++)
+  if(len > 0)
     {
-      *rol->dabufp++ = pBuf[ii];
+      syncFlag = vtpTIGetBlockSyncFlag();
+
+      /* Open an event, containing Banks */
+      CEOPEN(ROCID, BT_BANK, blklevel);
+
+      for(ii = 0; ii < len; ii++)
+	{
+	  *rol->dabufp++ = pBuf[ii];
+	}
     }
+
 #endif
 
 #ifdef READOUT_VTP

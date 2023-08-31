@@ -35,11 +35,11 @@ CFLAGS			= -O3
 endif
 CFLAGS			+= -DJLAB -DLINUX -DDAYTIME=$(COMPILE_TIME)
 
-INCS			= -I. -I$(HOME)/Linux-$(ARCH)/include \
-				-isystem${CODA_VME}/include \
+INCS			= -I. \
 				-isystem${LINUXVME_INC} \
+				-isystem${CODA_VME}/include \
 				-isystem${CODA}/common/include
-LIBS			= -L. -L$(HOME)/Linux-$(ARCH)/lib \
+LIBS			= -L. \
 				-L${LINUXVME_LIB} \
 				-L${CODA}/${MACHINE}/lib \
 				-lrt -lpthread $(ROLLIBS)
