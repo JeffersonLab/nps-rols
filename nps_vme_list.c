@@ -64,10 +64,14 @@ extern int fadcA32Base, nfadc;
 #define FADC_INCR (1<<19)
 #define FADC_BANK 0x3
 
-#define FADC_READ_CONF_FILE {			\
-    fadc250Config("");				\
-    if(rol->usrConfig)				\
-      fadc250Config(rol->usrConfig);		\
+/* Filename (with path) for fa250 config*/
+#include <libgen.h>
+char fa250_config_file[256];
+
+#define FADC_READ_CONF_FILE {				\
+    fadc250Config("");					\
+    if(strlen(fa250_config_file) > 0)			\
+      fadc250Config(fa250_config_file);			\
   }
 
 /* for the calculation of maximum data words in the block transfer */
@@ -214,6 +218,58 @@ readUserFlags()
   else
     printf("\tDISABLED\n");
 
+  /* Configfile type
+    - modify the path of the config file, based on the configtype string
+
+    - e.g.
+    Define in COOL (jcedit):
+      rol->usrConfig = "/home/coda/cfg/fa250.cfg";
+    Define in COOL (jcedit):
+      rol->usrString = "configtype=pedestal_suppression";
+
+    -> Modified config file
+      fa250_config_file = "/home/coda/cfg/pedestal_suppression/fa250.cfg";
+
+    - fa250_config_file = rol->usrConfig, if configtype is not defined.
+
+  */
+
+  char *configfile_base = basename(rol->usrConfig);
+  char *configfile_path = dirname(rol->usrConfig);
+
+  /* Bail if either of those failed */
+  if((configfile_base != NULL) && (configfile_path != NULL))
+    {
+      flagval = 0;
+      flag = getflag("configtype");
+      if(flag)
+	{
+	  char *configfile_type = getstr("configtype");
+	  if(configfile_type != NULL)
+	    {
+	      printf("%s: configtype = %s\n",
+		     __func__, configfile_type);
+	      strncpy(fa250_config_file, configfile_path, 256);
+	      strcat(fa250_config_file, "/");
+	      strcat(fa250_config_file, configfile_type);
+	      strcat(fa250_config_file, "/");
+	      strcat(fa250_config_file, configfile_base);
+
+	      free(configfile_type);
+	    }
+	  else
+	    {
+	      strncpy(fa250_config_file, rol->usrConfig, 256);
+	    }
+	}
+      else
+	{
+	  strncpy(fa250_config_file, rol->usrConfig, 256);
+	}
+    }
+
+  printf("%s: fa250_config_file = %s\n",
+	 __func__, fa250_config_file);
 }
 
 /*
@@ -461,10 +517,10 @@ rocPrestart()
   /* Add configuration files to user event type 137 */
   int maxsize = MAX_EVENT_LENGTH-128, inum = 0, nwords = 0;
 
-  if(rol->usrConfig)
+  if(strlen(fa250_config_file) > 0)
     {
       UEOPEN(137, BT_BANK, 0);
-      nwords = rocFile2Bank(rol->usrConfig,
+      nwords = rocFile2Bank(fa250_config_file,
 			    (uint8_t *)rol->dabufp,
 			    ROCID, inum++, maxsize);
       if(nwords > 0)
