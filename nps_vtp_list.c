@@ -39,6 +39,8 @@ int maxdummywords = 200;
 int trigBankType = 0xff10;
 int firstEvent;
 
+
+void writeConfigToFile();
 /**
                         DOWNLOAD
 **/
@@ -128,6 +130,9 @@ rocPrestart()
 
       UECLOSE;
     }
+
+  /* Write the current hardware configuration to file */
+  writeConfigToFile();
 
   printf(" Done with User Prestart\n");
 
