@@ -344,6 +344,54 @@ rocCleanup()
   vtpClose(VTP_FPGA_OPEN|VTP_I2C_OPEN|VTP_SPI_OPEN);
 }
 
+void
+writeConfigToFile()
+{
+  char str[16001];
+  vtpUploadAll(str, 16000);
+
+  char host[256];
+  int jj;
+
+  gethostname(host, 256);	/* obtain our hostname - and drop any domain extension */
+  for(jj = 0; jj < strlen(host); jj++)
+    {
+      if(host[jj] == '.')
+	{
+	  host[jj] = '\0';
+	  break;
+	}
+    }
+
+  char out_config_filename[256] =
+    "/net/cdaqfs1/cdaqfs-coda-home/coda/coda/scripts/EPICS_logging/Sessions/NPS/";
+
+  strcat(out_config_filename, host);
+  strcat(out_config_filename, ".dat");
+
+  FILE *out_fd = fopen(out_config_filename, "w+");
+
+  if(out_fd != NULL)
+    {
+      /* This is who we are */
+      fprintf(out_fd, "# host: %s\n", host);
+      fprintf(out_fd, "# ROCID: %d\n", ROCID);
+      fprintf(out_fd, "# Runnumber: %d\n", rol->runNumber);
+      fprintf(out_fd, "# RunType: %d\n", rol->runType);
+      fprintf(out_fd, "# usrString: %s\n", rol->usrString);
+      fprintf(out_fd, "# usrConfig: %s\n", rol->usrConfig);
+      fprintf(out_fd, "# VTP Config\n");
+      fprintf(out_fd, "%s\n", str);
+
+      fclose(out_fd);
+    }
+  else
+    {
+      perror("fopen");
+    }
+
+}
+
 /*
   Local Variables:
   compile-command: "make -k nps_vtp_list.so"
