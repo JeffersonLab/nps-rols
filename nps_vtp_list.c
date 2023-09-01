@@ -382,8 +382,11 @@ readUserFlags()
 
   */
 
-  char *configfile_base = basename(rol->usrConfig);
-  char *configfile_path = dirname(rol->usrConfig);
+  char configfile_copy[256];
+  strncpy(configfile_copy, rol->usrConfig, 256);
+
+  char *configfile_base = basename(configfile_copy);
+  char *configfile_path = dirname(configfile_copy);
 
   /* Bail if either of those failed */
   if((configfile_base != NULL) && (configfile_path != NULL))
@@ -402,6 +405,10 @@ readUserFlags()
 	      strcat(vtp_config_file, configfile_type);
 	      strcat(vtp_config_file, "/");
 	      strcat(vtp_config_file, configfile_base);
+
+	      daLogMsg("WARN",
+		       "configtype = %s, updated config file path",
+		       configfile_type);
 
 	      free(configfile_type);
 	    }
