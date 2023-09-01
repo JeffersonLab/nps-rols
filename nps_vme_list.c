@@ -255,6 +255,10 @@ readUserFlags()
 	      strcat(fa250_config_file, "/");
 	      strcat(fa250_config_file, configfile_base);
 
+	      daLogMsg("WARN",
+		       "configtype = %s, updated config file path",
+		       configfile_type);
+
 	      free(configfile_type);
 	    }
 	  else
