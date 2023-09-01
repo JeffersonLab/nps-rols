@@ -98,7 +98,7 @@ struct timespec last_time;
 #define VLD_BANK 0x1ed
 #endif
 
-
+#define INTERNAL_FLAGS "ffile=/home/hccoda/nps-vme/cfg/coda.flags"
 #include "usrstrutils.c"
 #ifdef TI_MASTER
 /* TI-Master Fiber-Slave configuration */
@@ -219,7 +219,7 @@ readUserFlags()
     printf("\tDISABLED\n");
 
   /* Configfile type
-    - modify the path of the config file, based on the configtype string
+    - modify the path of the config file path, based on the configtype string
 
     - e.g.
     Define in COOL (jcedit):
@@ -439,6 +439,7 @@ rocPrestart()
      What's set
      - TI Slave Ports
      - VTP
+     - configtype (config file path)
    */
   readUserFlags();
 
