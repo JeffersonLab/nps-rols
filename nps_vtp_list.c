@@ -17,6 +17,11 @@
 /* Routines to add string buffers to banks */
 #include "rocUtils.c"
 
+#define INTERNAL_FLAGS "ffile=/home/hccoda/nps-vtp/cfg/coda.flags"
+#include "usrstrutils.c"
+#include <libgen.h>
+char vtp_config_file[256];
+
 
 #define USE_DMA
 #define READOUT_TI
@@ -39,8 +44,9 @@ int maxdummywords = 200;
 int trigBankType = 0xff10;
 int firstEvent;
 
-
+/* These are defined after the roc routines */
 void writeConfigToFile();
+void readUserFlags();
 /**
                         DOWNLOAD
 **/
@@ -77,15 +83,18 @@ rocPrestart()
 {
   VTPflag = 0;
 
-  printf("calling VTP_READ_CONF_FILE ..\n");fflush(stdout);
+  /* Read User Flags with usrstringutils
+     What's set
+     - configtype (config file path)
+   */
+  readUserFlags();
 
-  printf("%s: rol->usrConfig = %s\n",
-	 __func__, rol->usrConfig);
+  printf("calling VTP_READ_CONF_FILE ..\n");fflush(stdout);
 
   /* Read Config file and Intialize VTP */
   vtpInitGlobals();
-  if(rol->usrConfig)
-    vtpConfig(rol->usrConfig);
+  if(strlen(vtp_config_file) > 0)
+    vtpConfig(vtp_config_file);
 
 
   printf("%s: Initialize DMA\n",
@@ -119,10 +128,10 @@ rocPrestart()
   /* Add configuration files to user event type 137 */
   int maxsize = MAX_EVENT_LENGTH-128, inum = 0, nwords = 0;
 
-  if(rol->usrConfig)
+  if(strlen(vtp_config_file) > 0)
     {
       UEOPEN(137, BT_BANK, 0);
-      nwords = rocFile2Bank(rol->usrConfig,
+      nwords = rocFile2Bank(vtp_config_file,
 			    (uint8_t *)rol->dabufp,
 			    ROCID, inum++, maxsize);
       if(nwords > 0)
@@ -347,6 +356,68 @@ rocCleanup()
 
   /* Close the VTP Library */
   vtpClose(VTP_FPGA_OPEN|VTP_I2C_OPEN|VTP_SPI_OPEN);
+}
+
+void
+readUserFlags()
+{
+  int flag = 0, flagval = 0;
+
+  printf("%s: Reading user flags file.\n", __func__);
+  init_strings();
+
+  /* Configfile type
+    - modify the path of the config file path, based on the configtype string
+
+    - e.g.
+    Define in COOL (jcedit):
+      rol->usrConfig = "/home/coda/cfg/vtp.cfg";
+    Define in COOL (jcedit):
+      rol->usrString = "configtype=pedestal_suppression";
+
+    -> Modified config file
+      vtp_config_file = "/home/coda/cfg/pedestal_suppression/vtp.cfg";
+
+    - vtp_config_file = rol->usrConfig, if configtype is not defined.
+
+  */
+
+  char *configfile_base = basename(rol->usrConfig);
+  char *configfile_path = dirname(rol->usrConfig);
+
+  /* Bail if either of those failed */
+  if((configfile_base != NULL) && (configfile_path != NULL))
+    {
+      flagval = 0;
+      flag = getflag("configtype");
+      if(flag)
+	{
+	  char *configfile_type = getstr("configtype");
+	  if(configfile_type != NULL)
+	    {
+	      printf("%s: configtype = %s\n",
+		     __func__, configfile_type);
+	      strncpy(vtp_config_file, configfile_path, 256);
+	      strcat(vtp_config_file, "/");
+	      strcat(vtp_config_file, configfile_type);
+	      strcat(vtp_config_file, "/");
+	      strcat(vtp_config_file, configfile_base);
+
+	      free(configfile_type);
+	    }
+	  else
+	    {
+	      strncpy(vtp_config_file, rol->usrConfig, 256);
+	    }
+	}
+      else
+	{
+	  strncpy(vtp_config_file, rol->usrConfig, 256);
+	}
+    }
+
+  printf("%s: vtp_config_file = %s\n",
+	 __func__, vtp_config_file);
 }
 
 void
