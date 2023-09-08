@@ -463,7 +463,7 @@ writeConfigToFile()
       fprintf(out_fd, "# RunType: %d\n", rol->runType);
       fprintf(out_fd, "# usrString: %s\n", rol->usrString);
       fprintf(out_fd, "# usrConfig: %s\n", rol->usrConfig);
-      fprintf(out_fd, "# VTP Config\n");
+      fprintf(out_fd, "# VTP Config: %s\n", vtp_config_file);
       fprintf(out_fd, "%s\n", str);
 
       fclose(out_fd);
