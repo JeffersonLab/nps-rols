@@ -234,8 +234,11 @@ readUserFlags()
 
   */
 
-  char *configfile_base = basename(rol->usrConfig);
-  char *configfile_path = dirname(rol->usrConfig);
+  char configfile_copy[256];
+  strncpy(configfile_copy, rol->usrConfig, 256);
+
+  char *configfile_base = basename(configfile_copy);
+  char *configfile_path = dirname(configfile_copy);
 
   /* Bail if either of those failed */
   if((configfile_base != NULL) && (configfile_path != NULL))
@@ -935,7 +938,7 @@ writeConfigToFile()
       fprintf(out_fd, "# RunType: %d\n", rol->runType);
       fprintf(out_fd, "# usrString: %s\n", rol->usrString);
       fprintf(out_fd, "# usrConfig: %s\n", rol->usrConfig);
-      fprintf(out_fd, "# FA250 Config\n");
+      fprintf(out_fd, "# FA250 Config: %s\n", fa250_config_file);
       fprintf(out_fd, "%s\n", str);
 
       fclose(out_fd);
