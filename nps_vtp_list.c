@@ -125,24 +125,27 @@ rocPrestart()
   vtpSerdesStatusAll();
   DALMASTOP;
 
-  /* Add configuration files to user event type 137 */
-  int maxsize = MAX_EVENT_LENGTH-128, inum = 0, nwords = 0;
-
-  if(strlen(vtp_config_file) > 0)
-    {
-      UEOPEN(137, BT_BANK, 0);
-      nwords = rocFile2Bank(vtp_config_file,
-			    (uint8_t *)rol->dabufp,
-			    ROCID, inum++, maxsize);
-      if(nwords > 0)
-	rol->dabufp += nwords;
-
-      UECLOSE;
-    }
-
-  /* Write the current hardware configuration to file */
   if(ROCID == 15) // only write out for nps-vtp1 (ROCID = 15)
-    writeConfigToFile();
+    {
+      /* Add configuration files to user event type 137 */
+      int maxsize = MAX_EVENT_LENGTH-128, inum = 0, nwords = 0;
+
+      if(strlen(vtp_config_file) > 0)
+	{
+	  UEOPEN(137, BT_BANK, 0);
+	  nwords = rocFile2Bank(vtp_config_file,
+				(uint8_t *)rol->dabufp,
+				ROCID, inum++, maxsize);
+	  if(nwords > 0)
+	    rol->dabufp += nwords;
+
+	  UECLOSE;
+	}
+
+      /* Write the current hardware configuration to file */
+      writeConfigToFile();
+
+    }
 
   printf(" Done with User Prestart\n");
 
