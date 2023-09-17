@@ -141,7 +141,8 @@ rocPrestart()
     }
 
   /* Write the current hardware configuration to file */
-  writeConfigToFile();
+  if(ROCID == 15) // only write out for nps-vtp1 (ROCID = 15)
+    writeConfigToFile();
 
   printf(" Done with User Prestart\n");
 
