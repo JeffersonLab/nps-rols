@@ -50,6 +50,9 @@ INCS			= -I. -I${LINUXVME_INC} ${INC_CODA_VME} \
 LIBS			= -L. -L${LINUXVME_LIB} ${LIB_CODA_VME} -DJLAB \
 				-lrt -lpthread -ljvme -lti $(ROLLIBS)
 
+SCALER_SERVER=/home/hccoda/nps-vme/scaler_server
+SHLIB=${SCALER_SERVER}/shmLib.o
+
 # DEFs for compiling CODA readout lists
 CCRL			= ${CODA_BIN}/ccrl
 CODA_INCS		= -I. -I${LINUXVME_INC} ${INC_CODA_VME} -isystem${CODA}/common/include
@@ -79,22 +82,22 @@ all:  $(VMEROL) $(SOBJS)
 %.so: %.c
 	@echo " CC     $@"
 	${Q}$(CC) -fpic -shared  $(CFLAGS) $(INCS) $(LIBS) \
-		-DINIT_NAME=$(@:.so=__init) -DINIT_NAME_POLL=$(@:.so=__poll) -o $@ $<
+		-DINIT_NAME=$(@:.so=__init) -DINIT_NAME_POLL=$(@:.so=__poll) -DFADC_SCALERS ${SHLIB} -o $@ $<
 
 %slave_list.so: %list.c
 	@echo " CC     $@"
 	${Q}$(CC) -fpic -shared  $(CFLAGS) $(INCS) $(LIBS) -DTI_SLAVE \
-		-DINIT_NAME=$(@:.so=__init) -DINIT_NAME_POLL=$(@:.so=__poll) -o $@ $<
+		-DINIT_NAME=$(@:.so=__init) -DINIT_NAME_POLL=$(@:.so=__poll) -DFADC_SCALERS ${SHLIB} -o $@ $<
 
 %master_list.so: %list.c
 	@echo " CC     $@"
 	${Q}$(CC) -fpic -shared  $(CFLAGS) $(INCS) $(LIBS) -DTI_MASTER \
-		-DINIT_NAME=$(@:.so=__init) -DINIT_NAME_POLL=$(@:.so=__poll) -o $@ $<
+		-DINIT_NAME=$(@:.so=__init) -DINIT_NAME_POLL=$(@:.so=__poll) -DFADC_SCALERS ${SHLIB} -o $@ $<
 
 %slave5_list.so: %list.c
 	@echo " CC     $@"
 	${Q}$(CC) -fpic -shared  $(CFLAGS) $(INCS) $(LIBS) -DTI_SLAVE5 \
-		-DINIT_NAME=$(@:.so=__init) -DINIT_NAME_POLL=$(@:.so=__poll) -o $@ $<
+		-DINIT_NAME=$(@:.so=__init) -DINIT_NAME_POLL=$(@:.so=__poll) -DFADC_SCALERS ${SHLIB} -o $@ $<
 
 clean distclean:
 	${Q}rm -f  $(VMEROL) $(SOBJS) $(CFILES) *~ $(DEPS) $(DEPS) *.d.*

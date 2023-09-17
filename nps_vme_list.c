@@ -80,10 +80,12 @@ unsigned int MAXFADCWORDS=0;
 /* SD variables */
 static unsigned int sdScanMask = 0;
 
+#define FADC_SCALERS
+
 #ifdef FADC_SCALERS
 /* FADC Scalers */
 // Define this to include scaler data in coda events
-// #define FADC_SCALER_BANKS
+#define FADC_SCALER_BANKS
 int scaler_period=2;
 struct timespec last_time;
 #include "../scaler_server/scale32LibNew.c"
@@ -328,12 +330,12 @@ rocDownload()
 
   /* Enable specific TS input bits (1-6) */
   tiEnableTSInput(
-		  /* TI_TSINPUT_1 | */
+		  TI_TSINPUT_1 |
 		  TI_TSINPUT_2 |
 		  TI_TSINPUT_3 |
-		  /* TI_TSINPUT_4 | */
-		  TI_TSINPUT_5 | 0
-		  /* TI_TSINPUT_6  */
+		  TI_TSINPUT_4 |
+		  TI_TSINPUT_5 |
+		  TI_TSINPUT_6
 		);
 
   /* Load the trigger table that associates
@@ -441,6 +443,7 @@ rocPrestart()
   clock_gettime(CLOCK_REALTIME, &last_time);
 #endif
 
+  rocTriggerSource = 0;
 
   /* Read User Flags with usrstringutils
      What's set
@@ -538,7 +541,8 @@ rocPrestart()
     }
 
   /* Write Hardware Config to file for log entry */
-  writeConfigToFile();
+  if(ROCID == 10) // only write out for nps-vme1 (ROCID = 10)
+    writeConfigToFile();
 
   printf("rocPrestart: User Prestart Executed\n");
 
@@ -628,12 +632,15 @@ rocGo()
 
       if(rocTriggerSource == 1)
 	{
+          tiLoadTriggerTable(0);
 	  /* Enable Random at rate 500kHz/(2^7) = ~3.9kHz */
-	  tiSetRandomTrigger(1,7);
+	  /* Enable Random at rate 500kHz/(2^10) = ~488Hz */
+	  tiSetRandomTrigger(1,10);
 	}
 
       if(rocTriggerSource == 2)
 	{
+          tiLoadTriggerTable(0);
 	  /*    Enable fixed rate with period (ns)
 		120 +30*700*(1024^0) = 21.1 us (~47.4 kHz)
 		- arg2 = 0xffff - Continuous
