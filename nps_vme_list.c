@@ -525,26 +525,7 @@ rocPrestart()
 #endif
   DALMASTOP;
 
-  if(ROCID == 10) // only write out for nps-vme1 (ROCID = 10)
-    {
-      /* Add configuration files to user event type 137 */
-
-      int maxsize = MAX_EVENT_LENGTH-128, inum = 0, nwords = 0;
-
-      if(strlen(fa250_config_file) > 0)
-	{
-	  UEOPEN(137, BT_BANK, 0);
-	  nwords = rocFile2Bank(fa250_config_file,
-				(uint8_t *)rol->dabufp,
-				ROCID, inum++, maxsize);
-	  if(nwords > 0)
-	    rol->dabufp += nwords;
-
-	  UECLOSE;
-	}
-    }
-
-  /* Write Hardware Config to file for log entry */
+  /* Write the current hardware configuration to evtype 137 and file */
   writeConfigToFile();
 
   printf("rocPrestart: User Prestart Executed\n");
@@ -915,8 +896,24 @@ rocSetTriggerSource(int source)
 void
 writeConfigToFile()
 {
-  char str[16001];
-  fadc250UploadAll(str, 16000);
+  char str[32000];
+  fadc250UploadAll(str, 32000);
+
+  /* Add configuration files to user event type 137 */
+
+  int maxsize = MAX_EVENT_LENGTH-128, inum = 0, nwords = 0;
+
+  if(strlen(str) > 0)
+    {
+      UEOPEN(137, BT_BANK, 0);
+      nwords = rocFile2Bank(str,
+			    (uint8_t *)rol->dabufp,
+			    ROCID, inum++, maxsize);
+      if(nwords > 0)
+	rol->dabufp += nwords;
+
+      UECLOSE;
+    }
 
   char host[256];
   int jj;
