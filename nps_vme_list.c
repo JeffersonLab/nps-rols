@@ -417,7 +417,7 @@ rocDownload()
   vldInit(0, 0, 0, 0); // Initialize library using auto-locate (all args = 0)
 #endif
 
-  tiStatus(0);
+  tiStatus(1);
   sdStatus(0);
   faGStatus(0);
 #ifdef VLD_READOUT
@@ -517,7 +517,7 @@ rocPrestart()
 
   DALMAGO;
   sdStatus(0);
-  tiStatus(0);
+  tiStatus(1);
   faGStatus(0);
 #ifdef VLD_READOUT
   if(vldGetNVLD() > 0)
@@ -669,7 +669,7 @@ rocEnd()
 
   DALMAGO;
   sdStatus(0);
-  tiStatus(0);
+  tiStatus(1);
   faGStatus(0);
 #ifdef VLD_READOUT
   if(vldGetNVLD() > 0)
