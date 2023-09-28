@@ -141,11 +141,11 @@ rocPrestart()
 
 	  UECLOSE;
 	}
-
-      /* Write the current hardware configuration to file */
-      writeConfigToFile();
-
     }
+
+  /* Write the current hardware configuration to file */
+  writeConfigToFile();
+
 
   printf(" Done with User Prestart\n");
 
