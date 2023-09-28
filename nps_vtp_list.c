@@ -125,25 +125,7 @@ rocPrestart()
   vtpSerdesStatusAll();
   DALMASTOP;
 
-  if(ROCID == 15) // only write out for nps-vtp1 (ROCID = 15)
-    {
-      /* Add configuration files to user event type 137 */
-      int maxsize = MAX_EVENT_LENGTH-128, inum = 0, nwords = 0;
-
-      if(strlen(vtp_config_file) > 0)
-	{
-	  UEOPEN(137, BT_BANK, 0);
-	  nwords = rocFile2Bank(vtp_config_file,
-				(uint8_t *)rol->dabufp,
-				ROCID, inum++, maxsize);
-	  if(nwords > 0)
-	    rol->dabufp += nwords;
-
-	  UECLOSE;
-	}
-    }
-
-  /* Write the current hardware configuration to file */
+  /* Write the current hardware configuration to evtype 137 and file */
   writeConfigToFile();
 
 
@@ -434,8 +416,23 @@ readUserFlags()
 void
 writeConfigToFile()
 {
-  char str[16001];
-  vtpUploadAll(str, 16000);
+  char str[32000];
+  vtpUploadAll(str, 32000);
+
+  /* Add configuration files to user event type 137 */
+  int maxsize = MAX_EVENT_LENGTH-128, inum = 0, nwords = 0;
+
+  if(strlen(str) > 0)
+    {
+      UEOPEN(137, BT_BANK, 0);
+      nwords = rocFile2Bank(str,
+			    (uint8_t *)rol->dabufp,
+			    ROCID, inum++, maxsize);
+      if(nwords > 0)
+	rol->dabufp += nwords;
+
+      UECLOSE;
+    }
 
   char host[256];
   int jj;
