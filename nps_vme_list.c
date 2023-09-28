@@ -542,10 +542,10 @@ rocPrestart()
 
 	  UECLOSE;
 	}
-
-      /* Write Hardware Config to file for log entry */
-      writeConfigToFile();
     }
+
+  /* Write Hardware Config to file for log entry */
+  writeConfigToFile();
 
   printf("rocPrestart: User Prestart Executed\n");
 
