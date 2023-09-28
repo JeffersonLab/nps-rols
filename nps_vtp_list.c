@@ -416,18 +416,26 @@ readUserFlags()
 void
 writeConfigToFile()
 {
-  char str[32000];
-  vtpUploadAll(str, 32000);
+  int maxsize = 30000;
+  char *str;
+
+  str = malloc(maxsize * sizeof(char));
+  if(str == NULL)
+    {
+      printf("%s: ERROR: Out of Memory\n", __func__);
+      return;
+    }
+  vtpUploadAll(str, maxsize);
 
   /* Add configuration files to user event type 137 */
-  int maxsize = MAX_EVENT_LENGTH-128, inum = 0, nwords = 0;
+  int inum = 0, nwords = 0;
 
   if(strlen(str) > 0)
     {
       UEOPEN(137, BT_BANK, 0);
-      nwords = rocFile2Bank(str,
-			    (uint8_t *)rol->dabufp,
-			    ROCID, inum++, maxsize);
+      nwords = rocBuffer2Bank(str,
+			      (uint8_t *)rol->dabufp,
+			      ROCID, inum++, strlen(str));
       if(nwords > 0)
 	rol->dabufp += nwords;
 
@@ -474,6 +482,7 @@ writeConfigToFile()
       perror("fopen");
     }
 
+  free(str);
 }
 
 /*
