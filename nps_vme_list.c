@@ -367,29 +367,29 @@ rocDownload()
   /* Add trigger latch pattern to datastream */
   tiSetFPInputReadout(1);
 #endif
-  int offset_fudge = 3;
-  int fiber_latency_offset[16] =
+
+  /* Set fixed fiber sync delay. */
+  int fiber_sync_delay[16] =
     { 0,0,0,0, 0,0,0,0, 0,0,// ROC ID = 0 - 9
 #if defined(TI_MASTER) || defined(TI_SLAVE5)
-      /* Fiber offsets for NPS only configs */
-      0x10 + offset_fudge, // 10: nps-vme1
-      0x10 + offset_fudge, // 11: nps-vme2
-      0x10 + offset_fudge, // 12: nps-vme3
-      0x0E + offset_fudge, // 13: nps-vme4
-      0x0E + offset_fudge, // 14: nps-vme5
+      /* Fiber sync delays for NPS only configs */
+      0x13, // 10: nps-vme1
+      0x0d, // 11: nps-vme2
+      0x0d, // 12: nps-vme3
+      0x02, // 13: nps-vme4
+      0x02, // 14: nps-vme5
 #else
-      /* Fiber offsets for NPS+HMS configs */
-      0xD0, // 10: nps-vme1
-      0xD1, // 11: nps-vme2
-      0xD0, // 12: nps-vme3
-      0xCE, // 13: nps-vme4
-      0xCD, // 14: nps-vme5
+      /* Fiber sync delays for NPS+HMS configs */
+      0x13, // 10: nps-vme1
+      0x14, // 11: nps-vme2
+      0x13, // 12: nps-vme3
+      0x11, // 13: nps-vme4
+      0x11, // 14: nps-vme5
 #endif
       0, };  // 15
-  int measured_fiber_latency = tiGetFiberLatencyMeasurement();
 
-  /* Re-set the fiber delay */
-  tiSetFiberDelay(measured_fiber_latency, fiber_latency_offset[ROCID]);
+  /* Re-set the fiber sync delay */
+  tiSetFiberSyncDelay(fiber_sync_delay[ROCID]);
 
   /* Init the SD library so we can get status info */
   sdScanMask = 0;
