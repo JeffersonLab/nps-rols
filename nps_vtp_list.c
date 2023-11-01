@@ -94,7 +94,14 @@ rocPrestart()
   /* Read Config file and Intialize VTP */
   vtpInitGlobals();
   if(strlen(vtp_config_file) > 0)
-    vtpConfig(vtp_config_file);
+    {
+      if(vtpConfig(vtp_config_file) < 0)
+	{
+	  daLogMsg("ERROR","Unable to load VTP configuration file");
+	  ROL_SET_ERROR;
+	}
+
+    }
 
 
   printf("%s: Initialize DMA\n",
