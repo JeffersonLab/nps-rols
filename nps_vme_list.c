@@ -71,7 +71,13 @@ char fa250_config_file[256];
 #define FADC_READ_CONF_FILE {				\
     fadc250Config("");					\
     if(strlen(fa250_config_file) > 0)			\
-      fadc250Config(fa250_config_file);			\
+      {							\
+	if(fadc250Config(fa250_config_file) < 0)	\
+	  {						\
+	    daLogMsg("ERROR","Unable to load FADC configuration file");	\
+	    ROL_SET_ERROR;				\
+	  }						\
+      }							\
   }
 
 /* for the calculation of maximum data words in the block transfer */
@@ -80,16 +86,14 @@ unsigned int MAXFADCWORDS=0;
 /* SD variables */
 static unsigned int sdScanMask = 0;
 
-#define FADC_SCALERS
-
 #ifdef FADC_SCALERS
 /* FADC Scalers */
 // Define this to include scaler data in coda events
 #define FADC_SCALER_BANKS
 int scaler_period=2;
 struct timespec last_time;
-#include "../scaler_server/scale32LibNew.c"
-#include "../scaler_server/linuxScalerLib.c"
+#include "scale32LibNew.c"
+#include "linuxScalerLib.c"
 #endif
 
 #define VLD_READOUT

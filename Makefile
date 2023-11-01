@@ -45,12 +45,13 @@ CFLAGS			= -O3
 endif
 CFLAGS			+= -DLINUX -DDAYTIME=\""`date`"\"
 
+SCALER_SERVER=/home/hccoda/nps-vme/scaler_server
+
 INCS			= -I. -I${LINUXVME_INC} ${INC_CODA_VME} \
-				-isystem${CODA}/common/include
+				-isystem${CODA}/common/include -isystem${SCALER_SERVER}
 LIBS			= -L. -L${LINUXVME_LIB} ${LIB_CODA_VME} -DJLAB \
 				-lrt -lpthread -ljvme -lti $(ROLLIBS)
 
-SCALER_SERVER=/home/hccoda/nps-vme/scaler_server
 SHLIB=${SCALER_SERVER}/shmLib.o
 
 # DEFs for compiling CODA readout lists
