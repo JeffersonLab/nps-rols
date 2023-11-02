@@ -162,7 +162,8 @@ rocGo()
 
   if(vtpSerdesCheckLinks() == ERROR)
     {
-      daLogMsg("ERROR","VTP Serdes links not up");
+      daLogMsg("ERROR","VTP Serdes links not up. Reset Required.");
+      ROL_SET_ERROR;
       return;
     }
 
